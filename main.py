@@ -18,7 +18,7 @@ GROQ_API_KEY          = os.environ["GROQ_API_KEY"]
 YOUTUBE_CLIENT_ID     = os.environ["YOUTUBE_CLIENT_ID"]
 YOUTUBE_CLIENT_SECRET = os.environ["YOUTUBE_CLIENT_SECRET"]
 YOUTUBE_REFRESH_TOKEN = os.environ["YOUTUBE_REFRESH_TOKEN"]
-PEXELS_API_KEY        = os.environ["PEXELS_API_KEY", ""]
+PEXELS_API_KEY        = os.environ["PEXELS_API_KEY"]
 HF_API_KEY            = os.environ.get("HF_API_KEY", "")
 
 WORK_DIR = Path("output")
