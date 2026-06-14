@@ -73,17 +73,24 @@ Output as JSON:
     print("Groq response:", resp_json)
     content = resp_json["choices"][0]["message"]["content"]
 
-     # Strip markdown fences if present
+    # Strip markdown fences
     content = content.strip()
-    if content.startswith("```"):
-        content = content.split("```")[1]
-        if content.startswith("json"):
-            content = content[4:]
+    if "```" in content:
+        parts = content.split("```")
+        for part in parts:
+            if part.startswith("json"):
+                content = part[4:]
+                break
+            elif "{" in part:
+                content = part
+                break
 
-    # Remove any bold markdown ** that breaks JSON
-    content = content.replace("**", "")
+    # Remove bold markdown and fix quotes
+    content = content.replace("**", "").strip()
 
-    data = json.loads(content.strip())
+    data = json.loads(content)
+    print(f"✅ Title: {data['title']}")
+    return data
 
 
 # ──────────────────────────────────────────────
