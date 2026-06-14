@@ -97,19 +97,15 @@ Output as JSON:
 # STEP 2: Generate Voiceover via Edge TTS (Free)
 # ──────────────────────────────────────────────
 def generate_voiceover(script: str):
-    print("🎙️ Generating voiceover with Edge TTS...")
+    print("🎙️ Generating voiceover with gTTS...")
 
     clean_script = script.replace("[PAUSE]", "...").replace("[pause]", "...")
     audio_path = WORK_DIR / "voiceover.mp3"
 
-    import asyncio
-    import edge_tts
+    from gtts import gTTS
+    tts = gTTS(text=clean_script, lang='hi', slow=False)
+    tts.save(str(audio_path))
 
-    async def generate():
-        communicate = edge_tts.Communicate(clean_script, "hi-IN-MadhurNeural", rate="-10%")
-        await communicate.save(str(audio_path))
-
-    asyncio.run(generate())
     print(f"✅ Voiceover saved: {audio_path}")
     return audio_path
 
