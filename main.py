@@ -99,21 +99,17 @@ Output as JSON:
 def generate_voiceover(script: str):
     print("🎙️ Generating voiceover with Edge TTS...")
 
-    # Clean script for TTS (remove stage directions)
     clean_script = script.replace("[PAUSE]", "...").replace("[pause]", "...")
-
     audio_path = WORK_DIR / "voiceover.mp3"
 
-    # Using edge-tts: Indian English voice, slightly slower for drama
-    cmd = [
-        "edge-tts",
-        "--voice", "hi-IN-MadhurNeural",   # Hindi voice — dramatic & deep
-        "--text", clean_script,
-        "--rate", "-10%",                   # Slightly slower = more dramatic              
-        "--write-media", str(audio_path)
-    ]
+    import asyncio
+    import edge_tts
 
-    subprocess.run(cmd, check=True, capture_output=True)
+    async def generate():
+        communicate = edge_tts.Communicate(clean_script, "hi-IN-MadhurNeural", rate="-10%")
+        await communicate.save(str(audio_path))
+
+    asyncio.run(generate())
     print(f"✅ Voiceover saved: {audio_path}")
     return audio_path
 
