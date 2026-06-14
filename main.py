@@ -18,7 +18,7 @@ GROQ_API_KEY          = os.environ["GROQ_API_KEY"]
 YOUTUBE_CLIENT_ID     = os.environ["YOUTUBE_CLIENT_ID"]
 YOUTUBE_CLIENT_SECRET = os.environ["YOUTUBE_CLIENT_SECRET"]
 YOUTUBE_REFRESH_TOKEN = os.environ["YOUTUBE_REFRESH_TOKEN"]
-PEXELS_API_KEY        = os.environ.get("PEXELS_API_KEY", "")
+PEXELS_API_KEY        = os.environ.get("PEXELS_API_KEY", "").strip())
 HF_API_KEY            = os.environ.get("HF_API_KEY", "")
 
 WORK_DIR = Path("output")
@@ -121,6 +121,7 @@ def get_background_videos(keyword: str, num: int = 3):
     """Fetch free stock videos from Pexels API"""
     print(f"🎬 Fetching stock videos for: {keyword}...")
 
+    print(f"🔑 Pexels key found: {bool(PEXELS_API_KEY)} length: {len(PEXELS_API_KEY)}")
     if not PEXELS_API_KEY:
         print("⚠️ No PEXELS_API_KEY — using dark gradient fallback")
         return generate_fallback_images(num)
