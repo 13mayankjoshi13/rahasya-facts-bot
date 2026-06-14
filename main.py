@@ -109,8 +109,7 @@ def generate_voiceover(script: str):
         "edge-tts",
         "--voice", "hi-IN-MadhurNeural",   # Hindi voice — dramatic & deep
         "--text", clean_script,
-        "--rate", "-10%",                   # Slightly slower = more dramatic
-        "--pitch", "-5Hz",                  # Deeper pitch = mysterious feel
+        "--rate", "-10%",                   # Slightly slower = more dramatic              
         "--write-media", str(audio_path)
     ]
 
