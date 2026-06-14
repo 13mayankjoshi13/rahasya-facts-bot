@@ -69,7 +69,9 @@ Output as JSON:
         }
     )
 
-    content = response.json()["choices"][0]["message"]["content"]
+    resp_json = response.json()
+    print("Groq response:", resp_json)
+    content = resp_json["choices"][0]["message"]["content"]
 
     # Strip markdown fences if present
     content = content.strip()
