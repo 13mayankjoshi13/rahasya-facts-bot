@@ -128,27 +128,26 @@ def get_background_videos(keyword: str, num: int = 3):
 
     try:
         response = requests.get(
-            f"https://api.pexels.com/videos/search",
+            "https://api.pexels.com/videos/search",
             headers={"Authorization": PEXELS_API_KEY},
             params={
-                "query": f"{keyword} dark mysterious",
-                "orientation": "portrait",
-                "size": "medium",
-                "per_page": num
+                "query": keyword,
+                "per_page": 5
             },
             timeout=15
         )
         data = response.json()
+        print(f"  📡 Pexels returned {len(data.get('videos', []))} videos")
         video_paths = []
 
         for i, video in enumerate(data.get("videos", [])[:num]):
-            # Get smallest HD file
-            video_files = sorted(
-                [f for f in video["video_files"] if f.get("quality") in ["hd", "sd"]],
-                key=lambda x: x.get("width", 0)
-            )
+            # Get any available video file
+            video_files = video.get("video_files", [])
             if not video_files:
                 continue
+            # Pick smallest file for speed
+            video_files = sorted(video_files, key=lambda x: x.get("width", 9999))
+            video_url = video_files[0]["link"]
 
             video_url = video_files[0]["link"]
             vid_path = WORK_DIR / f"bg_video_{i}.mp4"
