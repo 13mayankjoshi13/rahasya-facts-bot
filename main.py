@@ -214,23 +214,22 @@ def assemble_video(bg_assets, asset_type: str, audio_path: Path, script_data: di
     )
 
     if asset_type == "video" and bg_assets:
-        # Concat video clips
+        # Concat video clips properly
         concat_file = WORK_DIR / "videos.txt"
         with open(concat_file, "w") as f:
-            # Loop videos to fill audio duration
             total = 0
             idx = 0
-            while total < duration + 5:
+            while total < duration + 10:
                 vid = bg_assets[idx % len(bg_assets)]
                 f.write(f"file '{vid.absolute()}'\n")
-                total += 8  # assume ~8s per clip
+                total += 8
                 idx += 1
 
         cmd = [
             "ffmpeg", "-y",
-            "-f", "concat", "-safe", "0", "-stream_loop", "-1",
-            "-i", str(bg_assets[0]),  # loop first video
-            "-i", str(audio_path),
+            "-f", "concat", "-safe", "0",
+            "-i", str(concat_file),
+            "-i", str(audio_path),,
             "-vf", (
                 "scale=1080:1920:force_original_aspect_ratio=increase,"
                 "crop=1080:1920,"
