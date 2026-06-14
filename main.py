@@ -160,14 +160,18 @@ def get_background_videos(keyword: str, num: int = 3):
             video_paths.append(vid_path)
             print(f"  ✅ Video {i+1} downloaded")
 
+        print(f"  📊 Downloaded {len(video_paths)} videos")
         if video_paths:
             return video_paths, "video"
+        else:
+            print("  ⚠️ No videos downloaded from Pexels")
 
     except Exception as e:
+        import traceback
         print(f"  ⚠️ Pexels error: {e}")
+        traceback.print_exc()
 
     return generate_fallback_images(num), "image"
-
 
 def generate_fallback_images(num: int):
     """Dark gradient fallback images"""
