@@ -229,7 +229,7 @@ def assemble_video(bg_assets, asset_type: str, audio_path: Path, script_data: di
             "ffmpeg", "-y",
             "-f", "concat", "-safe", "0",
             "-i", str(concat_file),
-            "-i", str(audio_path),,
+            "-i", str(audio_path),
             "-vf", (
                 "scale=1080:1920:force_original_aspect_ratio=increase,"
                 "crop=1080:1920,"
