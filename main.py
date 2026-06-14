@@ -199,34 +199,16 @@ def assemble_video(image_paths: list, audio_path: Path, script_data: dict):
 
     # Title text for overlay
     thumbnail_text = script_data.get("thumbnail_text", "RAHASYA FACTS")
+    # Remove apostrophes and special chars that break FFmpeg
+    thumbnail_text = thumbnail_text.replace("'", "").replace('"', '').replace('**', '').replace(':', '')
 
     # FFmpeg command: images + audio + captions overlay + dark vignette
     cmd = [
         "ffmpeg", "-y",
         "-f", "concat", "-safe", "0", "-i", str(concat_file),
         "-i", str(audio_path),
-        "-filter_complex",
-        (
-            # Scale to vertical 9:16 (1080x1920)
-            "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,"
-            "crop=1080:1920,"
-            # Dark vignette for mysterious feel
-            "vignette=PI/4,"
-            # Animated zoom effect (Ken Burns)
-            "zoompan=z='min(zoom+0.0015,1.5)':d=1:s=1080x1920:fps=30,"
-            # Title text overlay
-            f"drawtext=text='{thumbnail_text}':"
-            "fontsize=72:fontcolor=white:borderw=4:bordercolor=black:"
-            "x=(w-text_w)/2:y=h*0.12:"
-            "fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf,"
-            # Channel watermark
-            "drawtext=text='@RahasyaFacts':"
-            "fontsize=36:fontcolor=white@0.7:borderw=2:bordercolor=black:"
-            "x=w*0.05:y=h*0.92:"
-            "fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-            "[v]"
-        ),
-        "-map", "[v]", "-map", "1:a",
+        "-vf", f"scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920",
+        "-map", "0:v", "-map", "1:a",
         "-c:v", "libx264", "-preset", "fast", "-crf", "23",
         "-c:a", "aac", "-b:a", "192k",
         "-shortest",
