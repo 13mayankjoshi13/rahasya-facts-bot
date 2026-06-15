@@ -2,9 +2,11 @@ name: 🎬 RahasyaFacts Daily Upload
 
 on:
   schedule:
-    # Runs every day at 10:00 AM IST (4:30 AM UTC)
-    - cron: '30 4 * * *'
-  workflow_dispatch: # Allow manual trigger anytime
+    # Upload 1: 2:00 PM IST = 8:30 AM UTC
+    - cron: '30 8 * * *'
+    # Upload 2: 8:00 PM IST = 2:30 PM UTC
+    - cron: '30 14 * * *'
+  workflow_dispatch: # Manual trigger anytime
 
 jobs:
   upload_short:
@@ -34,8 +36,8 @@ jobs:
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
-          HF_API_KEY: ${{ secrets.HF_API_KEY }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          HF_API_KEY: ${{ secrets.HF_API_KEY }}
         run: python main.py
 
       - name: 📊 Upload output logs
