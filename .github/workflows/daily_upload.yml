@@ -11,7 +11,7 @@ on:
 jobs:
   upload_short:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60  # Increased to 60 min — enough for everything
 
     steps:
       - name: 📥 Checkout code
@@ -31,6 +31,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: 🚀 Run RahasyaFacts Bot
+        timeout-minutes: 55  # Bot itself gets 55 min
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
@@ -46,4 +47,4 @@ jobs:
         with:
           name: output-${{ github.run_number }}
           path: output/
-          retention-days: 3
+          retention-days: 7
