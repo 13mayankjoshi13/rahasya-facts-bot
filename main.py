@@ -600,6 +600,9 @@ def upload_to_youtube(video_path: Path, script_data: dict, seo: dict):
 
     access_token = get_youtube_token()
 
+    cleaned_tags = [re.sub(r'[^a-zA-Z0-9 ]', '', t).strip() for t in seo["tags"] if len(t.strip()) > 1]
+    print(f"  🏷️ Final tags being sent: {cleaned_tags}")
+    
     metadata = {
         "snippet": {
             "title":           seo["title"][:100],
