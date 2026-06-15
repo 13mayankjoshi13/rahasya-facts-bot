@@ -510,6 +510,7 @@ def generate_seo(script_data: dict, trending_context: list):
         # Channel brand tags
         "RahasyaFacts", "rahasya facts channel",
         # Shorts specific
+        # Shorts specific
         "youtubeshorts", "shortsvideo", "viralshorts",
         "trending shorts", "shorts india",
     ]
@@ -602,7 +603,7 @@ def upload_to_youtube(video_path: Path, script_data: dict, seo: dict):
         "snippet": {
             "title":           seo["title"][:100],
             "description":     seo["description"][:5000],
-            "tags":            seo["tags"],
+            "tags": [re.sub(r'[^a-zA-Z0-9 ]', '', t).strip() for t in seo["tags"] if len(t.strip()) > 1],
             "categoryId":      "27",   # 27 = Education (better for facts channels)
             "defaultLanguage": "hi",
             "defaultAudioLanguage": "hi"
