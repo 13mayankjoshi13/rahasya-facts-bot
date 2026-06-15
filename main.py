@@ -528,10 +528,14 @@ def generate_seo(script_data: dict, trending_context: list):
     final_tags = []
     char_count = 0
     for tag in all_tags:
-        if char_count + len(tag) + 1 < 490:
-            final_tags.append(tag)
-            char_count += len(tag) + 1
-
+        # Clean tag — remove all special chars YouTube doesn't allow
+        clean_tag = re.sub(r'[<>\[\]{}|\\^~`]', '', tag).strip()
+        clean_tag = clean_tag[:30]  # max 30 chars per tag
+        if not clean_tag or len(clean_tag) < 2:
+            continue
+        if char_count + len(clean_tag) + 1 < 490:
+            final_tags.append(clean_tag)
+            char_count += len(clean_tag) + 1
     print(f"  ✅ Total tags: {len(final_tags)}")
 
     # ── DESCRIPTION SEO ──
