@@ -624,6 +624,8 @@ def upload_to_youtube(video_path: Path, script_data: dict, seo: dict):
         json=metadata
     )
 
+    print(f"  📡 YouTube API status: {init_response.status_code}")
+    print(f"  📡 YouTube API response: {init_response.text[:500]}")
     upload_url = init_response.headers["Location"]
 
     with open(video_path, "rb") as f:
