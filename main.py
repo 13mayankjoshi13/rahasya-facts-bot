@@ -1,6 +1,6 @@
 """
 RahasyaFacts - Dark & Mysterious Facts YouTube Shorts Bot
-Fixed: Voice quality, multi-photo slideshow, bg music, clean SEO tags
+Rock solid version - takes time but works perfectly
 """
 
 import os
@@ -26,13 +26,12 @@ WORK_DIR.mkdir(exist_ok=True)
 
 
 # ──────────────────────────────────────────────
-# STEP 0: Fetch Trending Topics in India
+# STEP 0: Trending Topics
 # ──────────────────────────────────────────────
 def get_trending_context():
     print("🔥 Fetching trending topics in India...")
     all_topics = []
 
-    # Reddit India memes
     for subreddit in ["indiameme", "indianmeme", "bollywood", "india"]:
         try:
             r = requests.get(
@@ -50,7 +49,6 @@ def get_trending_context():
         except Exception as e:
             print(f"  ⚠️ Reddit {subreddit}: {e}")
 
-    # Google Trends India
     try:
         r = requests.get(
             "https://trends.google.com/trending/rss?geo=IN",
@@ -73,7 +71,7 @@ def get_trending_context():
             "dark royal family secret", "shocking space fact",
         ]
 
-    print(f"  🎯 {len(all_topics)} trending topics fetched")
+    print(f"  🎯 {len(all_topics)} topics fetched")
     return all_topics
 
 
@@ -86,24 +84,25 @@ def generate_script(trending_context: list):
     top_topics   = trending_context[:3]
     backup_topic = random.choice(trending_context[3:]) if len(trending_context) > 3 else "dark Indian history"
 
-    prompt = f"""You are a viral YouTube Shorts scriptwriter for RahasyaFacts — India's top dark facts channel.
+    prompt = f"""You are a viral YouTube Shorts scriptwriter for RahasyaFacts — India's top dark facts channel loved by Gen Z.
 
 TRENDING IN INDIA RIGHT NOW:
 {chr(10).join([f"- {t}" for t in top_topics])}
 BACKUP: {backup_topic}
 
-Find a DARK, MYSTERIOUS or SHOCKING fact connected to these trends and write a 45-55 second Hinglish script.
+Find a DARK, MYSTERIOUS or SHOCKING fact connected to these trends and write a 50-60 second Hinglish script.
 
-Rules:
-- Natural Hinglish like real Indian Gen Z speaks
-- Short sentences max 8 words
-- Use: "Bhai", "Yaar", "Suno", "No way", "Literally"
-- Hook must be shocking in first 5 words
-- Build suspense, end with jaw-dropping twist
-- NO stage directions
+SCRIPT RULES:
+- Natural Hinglish like real Indian Gen Z speaks — mix Hindi and English naturally
+- Short punchy sentences, max 8 words each
+- Use: "Bhai", "Yaar", "Suno", "No way", "Literally", "Sacchi mein"
+- First sentence must be SO shocking viewer cannot scroll away
+- Build suspense with each line — save biggest reveal for last
+- End with a jaw-dropping twist that makes them share it
+- NO stage directions, NO [PAUSE] tags — just natural speech
 
-Output ONLY raw JSON no markdown no backticks:
-{{"title": "viral hinglish title max 55 chars no special chars", "thumbnail_text": "3 CAPS WORDS", "visual_keywords": ["specific keyword 1", "specific keyword 2", "specific keyword 3", "specific keyword 4"], "bg_music_mood": "dark", "tags": ["tag1", "tag2", "tag3", "tag4", "tag5", "tag6", "tag7", "tag8", "tag9", "tag10"], "script": "the full script here"}}"""
+OUTPUT ONLY RAW JSON — no markdown, no backticks, no explanation:
+{{"title": "viral hinglish title max 55 chars no quotes no colons no special chars", "thumbnail_text": "3 TO 4 CAPS ENGLISH WORDS ONLY NO SPECIAL CHARS", "visual_keywords": ["specific search term 1", "specific search term 2", "specific search term 3", "specific search term 4"], "bg_music_mood": "dark", "tags": ["tag1", "tag2", "tag3", "tag4", "tag5", "tag6", "tag7", "tag8", "tag9", "tag10"], "script": "the full hinglish script here"}}"""
 
     response = requests.post(
         "https://api.groq.com/openai/v1/chat/completions",
@@ -137,315 +136,296 @@ Output ONLY raw JSON no markdown no backticks:
 
 
 # ──────────────────────────────────────────────
-# STEP 2: Voiceover - Using gTTS with best settings
+# STEP 2: Voiceover
 # ──────────────────────────────────────────────
 def generate_voiceover(script: str):
     print("\n🎙️ Generating voiceover...")
 
-    audio_path = WORK_DIR / "voiceover.mp3"
-    fast_path  = WORK_DIR / "voiceover_fast.mp3"
+    raw_path  = WORK_DIR / "voice_raw.mp3"
+    fast_path = WORK_DIR / "voice_final.mp3"
 
     from gtts import gTTS
-    # Use 'hi' for natural Hindi voice
     tts = gTTS(text=script.strip(), lang='hi', slow=False)
-    tts.save(str(audio_path))
+    tts.save(str(raw_path))
+    print(f"  ✅ Raw audio: {raw_path.stat().st_size // 1024}KB")
 
-    # Speed 1.15x + slight bass boost for dramatic effect
-    result = subprocess.run([
-        "ffmpeg", "-y", "-i", str(audio_path),
-        "-filter:a", "atempo=1.15,equalizer=f=100:width_type=o:width=2:g=3",
+    # Speed up 1.15x + slight pitch raise for energy
+    r = subprocess.run([
+        "ffmpeg", "-y", "-i", str(raw_path),
+        "-filter:a", "atempo=1.15,aecho=0.8:0.88:60:0.4",
         str(fast_path)
     ], capture_output=True)
 
-    if result.returncode != 0:
-        # Fallback: just speed up without EQ
+    if r.returncode != 0 or not fast_path.exists():
+        # Simple fallback — just speed up
         subprocess.run([
-            "ffmpeg", "-y", "-i", str(audio_path),
+            "ffmpeg", "-y", "-i", str(raw_path),
             "-filter:a", "atempo=1.15",
             str(fast_path)
         ], capture_output=True, check=True)
 
-    print("  ✅ Voiceover ready")
+    print(f"  ✅ Final audio: {fast_path.stat().st_size // 1024}KB")
     return fast_path
 
 
 # ──────────────────────────────────────────────
-# STEP 3: Download Multiple Topic-Specific Visuals
+# STEP 3: Download Visuals from Pexels
 # ──────────────────────────────────────────────
 def download_visuals(visual_keywords: list):
-    print(f"\n🎬 Downloading visuals for: {visual_keywords}")
-
-    all_assets = []
+    print(f"\n🎬 Downloading visuals...")
+    all_photos = []
 
     for keyword in visual_keywords[:4]:
-        print(f"  🔍 '{keyword}'")
-
-        # Try photo from Pexels (more reliable than video)
+        print(f"  🔍 Searching photos: '{keyword}'")
         try:
             r = requests.get(
                 "https://api.pexels.com/v1/search",
                 headers={"Authorization": PEXELS_API_KEY},
-                params={"query": keyword, "per_page": 5},
+                params={"query": keyword, "per_page": 5, "orientation": "portrait"},
                 timeout=15
             )
             photos = r.json().get("photos", [])
-            print(f"    📸 Pexels photos found: {len(photos)}")
+            print(f"    Found {len(photos)} photos")
 
-            for photo in photos[:2]:  # grab 2 photos per keyword
-                url  = photo["src"].get("large2x") or photo["src"].get("large") or photo["src"].get("medium")
+            downloaded = 0
+            for photo in photos:
+                if downloaded >= 2:
+                    break
+                # Try best quality available
+                url = (photo["src"].get("portrait") or
+                       photo["src"].get("large") or
+                       photo["src"].get("medium"))
                 if not url:
                     continue
-                path = WORK_DIR / f"photo_{len(all_assets)}.jpg"
-                pr   = requests.get(url, timeout=20)
-                if pr.status_code == 200 and len(pr.content) > 1000:
-                    with open(path, "wb") as f:
-                        f.write(pr.content)
-                    # Verify it's a valid image
-                    check = subprocess.run(
-                        ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_streams", str(path)],
-                        capture_output=True, text=True
-                    )
-                    if '"codec_type": "video"' in check.stdout or '"codec_name"' in check.stdout:
-                        all_assets.append(("image", path))
-                        print(f"    ✅ Photo saved: {path.name}")
-                        break
+
+                path = WORK_DIR / f"photo_{len(all_photos)}.jpg"
+                try:
+                    pr = requests.get(url, timeout=30)
+                    if pr.status_code == 200 and len(pr.content) > 5000:
+                        with open(path, "wb") as f:
+                            f.write(pr.content)
+                        # Verify valid image with ffprobe
+                        check = subprocess.run(
+                            ["ffprobe", "-v", "error", "-show_entries",
+                             "stream=codec_type", "-of", "default=noprint_wrappers=1", str(path)],
+                            capture_output=True, text=True
+                        )
+                        if "video" in check.stdout:
+                            all_photos.append(path)
+                            downloaded += 1
+                            print(f"    ✅ Photo {len(all_photos)}: {path.name} ({len(pr.content)//1024}KB)")
+                except Exception as e:
+                    print(f"    ⚠️ Download failed: {e}")
+
         except Exception as e:
-            print(f"    ⚠️ Photo failed: {e}")
+            print(f"  ⚠️ Pexels search failed for '{keyword}': {e}")
 
-        # Also try video
-        try:
-            r = requests.get(
-                "https://api.pexels.com/videos/search",
-                headers={"Authorization": PEXELS_API_KEY},
-                params={"query": keyword, "per_page": 3},
-                timeout=15
-            )
-            videos = r.json().get("videos", [])
-            print(f"    🎬 Pexels videos found: {len(videos)}")
+    print(f"  📊 Total photos: {len(all_photos)}")
 
-            for video in videos[:1]:
-                files = sorted(video.get("video_files", []), key=lambda x: x.get("width", 9999))
-                if not files:
-                    continue
-                url  = files[0]["link"]
-                path = WORK_DIR / f"video_{len(all_assets)}.mp4"
-                vr   = requests.get(url, timeout=30)
-                if vr.status_code == 200 and len(vr.content) > 10000:
-                    with open(path, "wb") as f:
-                        f.write(vr.content)
-                    all_assets.append(("video", path))
-                    print(f"    ✅ Video saved: {path.name}")
-                    break
-        except Exception as e:
-            print(f"    ⚠️ Video failed: {e}")
+    # Pad with fallbacks if needed
+    while len(all_photos) < 5:
+        fallbacks = generate_fallback_images(5 - len(all_photos))
+        all_photos += fallbacks
+        print(f"  ➕ Added {len(fallbacks)} fallback images")
 
-    print(f"  📊 Total assets: {len(all_assets)}")
-
-    # Always ensure at least 4 assets for smooth slideshow
-    if len(all_assets) < 4:
-        print("  ➕ Adding fallback images to fill slideshow")
-        fallbacks = generate_fallback_images(4 - len(all_assets))
-        all_assets += [("image", p) for p in fallbacks]
-
-    return all_assets
+    return all_photos
 
 
 def generate_fallback_images(num: int):
     paths = []
     gradients = ["0x0a0a0a", "0x1a0a2e", "0x16213e", "0x0f3460", "0x1a1a2e", "0x2d1b69"]
     for i in range(num):
-        path  = WORK_DIR / f"fallback_{i}.jpg"
+        path  = WORK_DIR / f"fallback_{len(paths)}.jpg"
         color = gradients[i % len(gradients)]
-        subprocess.run([
+        r = subprocess.run([
             "ffmpeg", "-y", "-f", "lavfi",
             "-i", f"color=c={color}:size=1080x1920:duration=1",
             "-vframes", "1", str(path)
         ], capture_output=True)
-        paths.append(path)
+        if r.returncode == 0:
+            paths.append(path)
     return paths
 
 
 # ──────────────────────────────────────────────
-# STEP 4: Background Music
+# STEP 4: Background Music — Generate with FFmpeg (no download needed!)
 # ──────────────────────────────────────────────
-def get_bg_music(mood: str):
-    print(f"\n🎵 Downloading background music ({mood})...")
+def get_bg_music(mood: str, duration: float):
+    """Generate dark ambient music using FFmpeg sine waves — 100% reliable, no downloads"""
+    print(f"\n🎵 Generating background music ({mood}, {duration:.1f}s)...")
 
-    # Multiple fallback URLs per mood
-    music_options = {
-        "dark": [
-            "https://cdn.pixabay.com/download/audio/2022/03/24/audio_2cdb05b432.mp3",
-            "https://cdn.pixabay.com/download/audio/2021/11/01/audio_cb4f5a2c08.mp3",
-        ],
-        "suspense": [
-            "https://cdn.pixabay.com/download/audio/2022/10/25/audio_946b2ded06.mp3",
-            "https://cdn.pixabay.com/download/audio/2022/01/18/audio_d1718ab41b.mp3",
-        ],
-        "horror": [
-            "https://cdn.pixabay.com/download/audio/2023/03/09/audio_c5af65f1d1.mp3",
-            "https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3",
-        ],
-        "mystery": [
-            "https://cdn.pixabay.com/download/audio/2022/08/02/audio_884fe92c21.mp3",
-            "https://cdn.pixabay.com/download/audio/2021/08/09/audio_dc39bede17.mp3",
-        ],
-    }
-
-    urls       = music_options.get(mood, music_options["dark"])
     music_path = WORK_DIR / "bg_music.mp3"
 
-    for url in urls:
-        try:
-            r = requests.get(url, timeout=20)
-            if r.status_code == 200 and len(r.content) > 10000:
-                with open(music_path, "wb") as f:
-                    f.write(r.content)
-                print(f"  ✅ Music downloaded ({len(r.content)//1024}KB)")
-                return music_path
-        except Exception as e:
-            print(f"  ⚠️ Music URL failed: {e}")
+    # Different frequency combinations per mood for different feels
+    mood_settings = {
+        "dark":     {"freq1": 60,  "freq2": 90,  "freq3": 120, "vol": 0.15},
+        "suspense": {"freq1": 80,  "freq2": 110, "freq3": 160, "vol": 0.12},
+        "horror":   {"freq1": 40,  "freq2": 60,  "freq3": 80,  "vol": 0.18},
+        "mystery":  {"freq1": 100, "freq2": 150, "freq3": 200, "vol": 0.10},
+    }
 
-    print("  ⚠️ All music URLs failed")
+    s = mood_settings.get(mood, mood_settings["dark"])
+    dur = duration + 2
+
+    # Generate layered sine wave ambient music using FFmpeg
+    r = subprocess.run([
+        "ffmpeg", "-y",
+        "-f", "lavfi",
+        "-i", (
+            f"sine=frequency={s['freq1']}:duration={dur},"
+            f"volume={s['vol']}"
+        ),
+        "-f", "lavfi",
+        "-i", (
+            f"sine=frequency={s['freq2']}:duration={dur},"
+            f"volume={s['vol'] * 0.7}"
+        ),
+        "-f", "lavfi",
+        "-i", (
+            f"sine=frequency={s['freq3']}:duration={dur},"
+            f"volume={s['vol'] * 0.5}"
+        ),
+        "-filter_complex",
+        "[0][1][2]amix=inputs=3:duration=longest,lowpass=f=300,volume=0.6[aout]",
+        "-map", "[aout]",
+        "-c:a", "mp3", "-b:a", "128k",
+        str(music_path)
+    ], capture_output=True)
+
+    if r.returncode == 0 and music_path.exists() and music_path.stat().st_size > 1000:
+        print(f"  ✅ Music generated ({music_path.stat().st_size // 1024}KB)")
+        return music_path
+
+    print(f"  ⚠️ Music generation failed: {r.stderr.decode()[-100:]}")
     return None
 
 
 # ──────────────────────────────────────────────
 # STEP 5: Assemble Video
 # ──────────────────────────────────────────────
-def assemble_video(assets: list, audio_path: Path, music_path, script_data: dict):
-    print("\n🎬 Assembling video...")
+def assemble_video(photos: list, audio_path: Path, music_path, script_data: dict):
+    print("\n🎬 Assembling final video...")
 
     output_path = WORK_DIR / "final_short.mp4"
     bg_path     = WORK_DIR / "background.mp4"
-    audio_mix   = WORK_DIR / "audio_mix.aac"
+    audio_mix   = WORK_DIR / "audio_mix.mp3"
 
     # Get audio duration
     result   = subprocess.run([
         "ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", str(audio_path)
     ], capture_output=True, text=True)
     duration = float(json.loads(result.stdout)["format"]["duration"])
-    print(f"  Duration: {duration:.1f}s | Assets: {len(assets)}")
+    print(f"  ⏱️ Audio duration: {duration:.1f}s")
+    print(f"  📸 Photos: {len(photos)}")
 
     # Clean thumbnail text
     thumbnail_text = re.sub(r'[^A-Z0-9 ]', '', script_data.get("thumbnail_text", "RAHASYA FACTS").upper()).strip()
     if not thumbnail_text:
         thumbnail_text = "RAHASYA FACTS"
 
-    # ── BUILD SLIDESHOW from all assets ──
-    images = [(t, p) for t, p in assets if t == "image"]
-    videos = [(t, p) for t, p in assets if t == "video"]
+    # ── BUILD SLIDESHOW ──
+    # Each photo gets equal screen time
+    img_duration = duration / len(photos)
+    print(f"  🖼️ Each photo: {img_duration:.1f}s")
 
-    # Convert videos to images (extract frame) for uniform slideshow
-    all_images = list(images)
-    for i, (_, vpath) in enumerate(videos):
-        frame_path = WORK_DIR / f"frame_{i}.jpg"
-        subprocess.run([
-            "ffmpeg", "-y", "-i", str(vpath),
-            "-ss", "00:00:01", "-vframes", "1",
-            str(frame_path)
-        ], capture_output=True)
-        if frame_path.exists() and frame_path.stat().st_size > 1000:
-            all_images.append(("image", frame_path))
-
-    # If still no images, use fallbacks
-    if not all_images:
-        fallbacks = generate_fallback_images(4)
-        all_images = [("image", p) for p in fallbacks]
-
-    # Each image shows for equal duration
-    num_images   = len(all_images)
-    img_duration = duration / num_images
-    print(f"  📸 Slideshow: {num_images} images × {img_duration:.1f}s each")
-
-    # Write concat file
     concat_file = WORK_DIR / "slideshow.txt"
     with open(concat_file, "w") as f:
-        for _, ipath in all_images:
-            f.write(f"file '{ipath.absolute()}'\n")
+        for photo in photos:
+            f.write(f"file '{photo.absolute()}'\n")
             f.write(f"duration {img_duration:.3f}\n")
-        # Repeat last image to avoid black end frame
-        _, last = all_images[-1]
-        f.write(f"file '{last.absolute()}'\n")
+        # Add last frame again to prevent black flash
+        f.write(f"file '{photos[-1].absolute()}'\n")
 
-    # Build slideshow with zoom effect
+    # Convert slideshow to video with smooth scaling (no zoom to avoid crashes)
     r = subprocess.run([
         "ffmpeg", "-y",
         "-f", "concat", "-safe", "0", "-i", str(concat_file),
         "-vf", (
-            "scale=1920:1920:force_original_aspect_ratio=increase,"
+            "scale=1080:1920:force_original_aspect_ratio=increase,"
             "crop=1080:1920,"
-            "zoompan=z='if(eq(on,1),1.0,min(zoom+0.0008,1.2))'"
-            ":x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
-            ":d=1:s=1080x1920:fps=25"
+            "setsar=1"
         ),
-        "-c:v", "libx264", "-preset", "fast", "-crf", "23",
-        "-t", str(duration + 0.5), "-r", "25", "-an",
+        "-c:v", "libx264", "-preset", "fast", "-crf", "22",
+        "-pix_fmt", "yuv420p",
+        "-t", str(duration + 0.5),
+        "-r", "25", "-an",
         str(bg_path)
     ], capture_output=True)
 
     if r.returncode != 0:
-        print(f"  ⚠️ Zoom effect failed, using simple slideshow")
-        subprocess.run([
-            "ffmpeg", "-y",
-            "-f", "concat", "-safe", "0", "-i", str(concat_file),
-            "-vf", "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920",
-            "-c:v", "libx264", "-preset", "fast", "-crf", "23",
-            "-t", str(duration + 0.5), "-r", "25", "-an",
-            str(bg_path)
-        ], check=True, capture_output=True)
+        print(f"  ❌ Slideshow error: {r.stderr.decode()[-300:]}")
+        raise Exception("Slideshow assembly failed")
 
-    print("  ✅ Slideshow built")
+    print(f"  ✅ Slideshow: {bg_path.stat().st_size // 1024}KB")
 
     # ── MIX AUDIO ──
     if music_path and music_path.exists() and music_path.stat().st_size > 1000:
         r = subprocess.run([
             "ffmpeg", "-y",
-            "-stream_loop", "-1", "-i", str(music_path),
             "-i", str(audio_path),
+            "-i", str(music_path),
             "-filter_complex",
-            "[0:a]volume=0.08[music];[1:a]volume=1.0[voice];[music][voice]amix=inputs=2:duration=second[aout]",
+            (
+                "[0:a]volume=1.0,apad[voice];"
+                "[1:a]volume=0.08[music];"
+                "[voice][music]amix=inputs=2:duration=first:dropout_transition=2[aout]"
+            ),
             "-map", "[aout]",
-            "-c:a", "aac", "-b:a", "192k", "-shortest",
+            "-c:a", "libmp3lame", "-b:a", "192k",
             str(audio_mix)
         ], capture_output=True)
 
-        if r.returncode == 0:
+        if r.returncode == 0 and audio_mix.stat().st_size > 1000:
             final_audio = audio_mix
-            print("  ✅ Audio mixed with bg music")
+            print(f"  ✅ Audio mixed: {audio_mix.stat().st_size // 1024}KB")
         else:
             final_audio = audio_path
-            print(f"  ⚠️ Audio mix failed: {r.stderr.decode()[-200:]}")
+            print(f"  ⚠️ Audio mix failed — using voice only")
+            print(f"  ⚠️ Error: {r.stderr.decode()[-200:]}")
     else:
         final_audio = audio_path
-        print("  ⚠️ No bg music available")
+        print("  ℹ️ No bg music")
 
-    # ── COMBINE: VIDEO + AUDIO + TEXT ──
-    subprocess.run([
+    # ── FINAL COMBINE: VIDEO + AUDIO + TEXT ──
+    r = subprocess.run([
         "ffmpeg", "-y",
         "-i", str(bg_path),
         "-i", str(final_audio),
         "-vf", (
-            # Darken edges for dramatic look
-            "vignette=PI/5,"
-            # Title at top
+            # Dark vignette edges
+            "vignette=PI/4,"
+            # Title text at top
             f"drawtext=text='{thumbnail_text}':"
-            "fontsize=58:fontcolor=white:borderw=5:bordercolor=black@0.8:"
-            "x=(w-text_w)/2:y=h*0.07:"
+            "fontsize=58:fontcolor=white:borderw=5:bordercolor=black@0.9:"
+            "box=1:boxcolor=black@0.3:boxborderw=10:"
+            "x=(w-text_w)/2:y=h*0.06:"
             "fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf,"
-            # Watermark at bottom
+            # Channel watermark
             "drawtext=text='@RahasyaFacts':"
-            "fontsize=26:fontcolor=white@0.85:borderw=2:bordercolor=black:"
+            "fontsize=26:fontcolor=white@0.9:borderw=2:bordercolor=black:"
             "x=(w-text_w)/2:y=h*0.93:"
             "fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
         ),
-        "-map", "0:v", "-map", "1:a",
+        "-map", "0:v",
+        "-map", "1:a",
         "-c:v", "libx264", "-preset", "fast", "-crf", "22",
         "-c:a", "aac", "-b:a", "192k",
-        "-shortest", "-r", "25",
+        "-pix_fmt", "yuv420p",
+        "-movflags", "+faststart",
+        "-shortest",
         str(output_path)
-    ], check=True)
+    ], capture_output=True)
 
-    print(f"  ✅ Final video ready!")
+    if r.returncode != 0:
+        print(f"  ❌ Final combine error: {r.stderr.decode()[-300:]}")
+        raise Exception("Final video assembly failed")
+
+    size = output_path.stat().st_size
+    print(f"  ✅ Final video: {size // 1024}KB ({size // (1024*1024)}MB)")
+
+    if size < 200000:
+        raise Exception(f"Output video too small ({size//1024}KB) — something went wrong!")
+
     return output_path
 
 
@@ -457,19 +437,16 @@ def generate_seo(script_data: dict, trending_context: list):
 
     title = script_data.get("title", "Dark Facts India")
 
-    # Power words
-    power_words = ["Shocking", "Dark Secret", "Hidden Truth", "Scary", "Mysterious", "Untold"]
+    power_words = ["Shocking", "Dark Secret", "Hidden Truth", "Scary", "Mysterious"]
     has_power   = any(w.lower() in title.lower() for w in power_words)
     if not has_power and len(title) < 45:
         title = f"{random.choice(power_words)} {title}"
     title = title[:100]
 
-    # Build clean tags — only alphanumeric and spaces
     def clean_tag(t):
         return re.sub(r'[^a-zA-Z0-9 ]', '', str(t)).strip()[:30]
 
-    ai_tags = [clean_tag(t) for t in script_data.get("tags", []) if clean_tag(t)]
-
+    ai_tags   = [clean_tag(t) for t in script_data.get("tags", []) if clean_tag(t)]
     base_tags = [
         "facts", "shorts", "viral", "trending", "india",
         "dark facts", "mystery", "rahasya", "indian mystery",
@@ -477,31 +454,27 @@ def generate_seo(script_data: dict, trending_context: list):
         "rahasya facts", "anokhe facts", "hindi facts",
         "RahasyaFacts", "youtubeshorts", "viralshorts", "shorts india",
     ]
+    trend_tags = [clean_tag(" ".join(t.split()[:2])) for t in trending_context[:3]]
 
-    trend_tags = []
-    for topic in trending_context[:3]:
-        tag = clean_tag(" ".join(topic.split()[:2]))
-        if tag:
-            trend_tags.append(tag)
+    final_tags = list(dict.fromkeys(
+        [t for t in ai_tags + base_tags + trend_tags if len(t) > 1]
+    ))[:30]
 
-    all_tags   = list(dict.fromkeys(ai_tags + base_tags + trend_tags))
-    final_tags = [t for t in all_tags if len(t) > 1][:30]
+    description = (
+        f"{title}\n\n"
+        "Subscribe for daily dark and mysterious facts!\n"
+        "Share if this fact shocked you!\n"
+        "Comment below what you think!\n\n"
+        "dark facts india mysterious facts hindi shocking indian history "
+        "rahasya facts india ke rahasya horror facts hindi\n\n"
+        f"Trending: {' '.join(trending_context[:2])}\n\n"
+        "#Shorts #RahasyaFacts #DarkFacts #MysteriousFacts "
+        "#IndianFacts #ViralShorts #Hindi #Rahasya"
+    )
 
-    # Description — clean, no special unicode box chars
-    desc = f"""{title}
-
-Subscribe for daily dark and mysterious facts!
-Share if this fact shocked you!
-Comment below what you think!
-
-dark facts india mysterious facts hindi shocking indian history rahasya facts india ke rahasya horror facts hindi
-
-Trending: {' '.join(trending_context[:2])}
-
-#Shorts #RahasyaFacts #DarkFacts #MysteriousFacts #IndianFacts #ViralShorts #Hindi #Rahasya"""
-
-    print(f"  ✅ Tags: {len(final_tags)} | Title: {title}")
-    return {"title": title, "description": desc[:4900], "tags": final_tags}
+    print(f"  ✅ Title: {title}")
+    print(f"  ✅ Tags: {len(final_tags)}")
+    return {"title": title, "description": description[:4900], "tags": final_tags}
 
 
 # ──────────────────────────────────────────────
@@ -523,9 +496,14 @@ def get_youtube_token():
 def upload_to_youtube(video_path: Path, seo: dict):
     print("\n📤 Uploading to YouTube...")
 
+    # Check file size before uploading
+    size = video_path.stat().st_size
+    print(f"  📁 File size: {size // 1024}KB")
+    if size < 200000:
+        raise Exception(f"Video too small to upload: {size//1024}KB")
+
     access_token = get_youtube_token()
 
-    # Final tag clean — guaranteed safe for YouTube API
     safe_tags = [re.sub(r'[^a-zA-Z0-9 ]', '', t).strip() for t in seo["tags"]]
     safe_tags = [t for t in safe_tags if len(t) > 1][:30]
 
@@ -547,8 +525,6 @@ def upload_to_youtube(video_path: Path, seo: dict):
         }
     }
 
-    print(f"  🏷️ Tags ({len(safe_tags)}): {safe_tags[:5]}...")
-
     init = requests.post(
         "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status",
         headers={
@@ -569,13 +545,22 @@ def upload_to_youtube(video_path: Path, seo: dict):
     with open(video_path, "rb") as f:
         video_data = f.read()
 
+    print(f"  ⬆️ Uploading {len(video_data)//1024}KB...")
     up = requests.put(
         upload_url,
-        headers={"Content-Type": "video/mp4", "Content-Length": str(len(video_data))},
-        data=video_data
+        headers={
+            "Content-Type":   "video/mp4",
+            "Content-Length": str(len(video_data))
+        },
+        data=video_data,
+        timeout=300
     )
 
     video_id = up.json().get("id")
+    if not video_id:
+        print(f"  ❌ Upload response: {up.text[:300]}")
+        raise Exception("Upload failed — no video ID returned")
+
     print(f"  ✅ Uploaded! https://youtube.com/shorts/{video_id}")
     return video_id
 
@@ -588,19 +573,41 @@ def main():
     print(f"📅 {datetime.now().strftime('%Y-%m-%d %H:%M')}\n")
 
     try:
-        trending   = get_trending_context()
-        script     = generate_script(trending)
-        audio      = generate_voiceover(script["script"])
-        assets     = download_visuals(script.get("visual_keywords", ["mystery", "ancient ruins", "dark forest", "night sky"]))
-        music      = get_bg_music(script.get("bg_music_mood", "dark"))
-        video      = assemble_video(assets, audio, music, script)
-        seo        = generate_seo(script, trending)
-        video_id   = upload_to_youtube(video, seo)
+        # Step 0: Trending topics
+        trending = get_trending_context()
+
+        # Step 1: Script
+        script = generate_script(trending)
+
+        # Step 2: Voiceover
+        audio = generate_voiceover(script["script"])
+
+        # Step 3: Visuals
+        keywords = script.get("visual_keywords", ["mystery dark", "ancient ruins", "dark forest night", "mysterious India"])
+        photos   = download_visuals(keywords)
+
+        # Step 4: Get audio duration for music generation
+        result   = subprocess.run([
+            "ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", str(audio)
+        ], capture_output=True, text=True)
+        duration = float(json.loads(result.stdout)["format"]["duration"])
+
+        # Step 5: Generate background music (no download — made with FFmpeg)
+        music = get_bg_music(script.get("bg_music_mood", "dark"), duration)
+
+        # Step 6: Assemble video
+        video = assemble_video(photos, audio, music, script)
+
+        # Step 7: SEO
+        seo = generate_seo(script, trending)
+
+        # Step 8: Upload
+        video_id = upload_to_youtube(video, seo)
 
         print(f"\n🎉 SUCCESS!")
         print(f"🔗 https://youtube.com/shorts/{video_id}")
         print(f"📌 {seo['title']}")
-        print(f"🏷️ {len(seo['tags'])} SEO tags applied")
+        print(f"🏷️ {len(seo['tags'])} SEO tags")
 
     except Exception as e:
         import traceback
