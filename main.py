@@ -604,7 +604,7 @@ def upload_to_youtube(video_path: Path, script_data: dict, seo: dict):
         "snippet": {
             "title":           seo["title"][:100],
             "description":     seo["description"][:5000],
-            "tags": [re.sub(r'[^a-zA-Z0-9 ]', '', t).strip() for t in seo["tags"] if len(t.strip()) > 1],
+            "tags": cleaned_tags,
             "categoryId":      "27",   # 27 = Education (better for facts channels)
             "defaultLanguage": "hi",
             "defaultAudioLanguage": "hi"
@@ -630,6 +630,8 @@ def upload_to_youtube(video_path: Path, script_data: dict, seo: dict):
         json=metadata
     )
 
+    cleaned_tags = [re.sub(r'[^a-zA-Z0-9 ]', '', t).strip() for t in seo["tags"] if len(t.strip()) > 1]
+    print(f"  🏷️ Final tags being sent: {cleaned_tags}")
     print(f"  📡 YouTube API status: {init_response.status_code}")
     print(f"  📡 YouTube API response: {init_response.text[:500]}")
     upload_url = init_response.headers["Location"]
