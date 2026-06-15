@@ -423,12 +423,13 @@ def assemble_video(assets: list, audio_path: Path, music_path, script_data: dict
         audio_mix = WORK_DIR / "audio_mix.mp3"
         subprocess.run([
             "ffmpeg", "-y",
+            "-stream_loop", "-1", "-i", str(music_path),
             "-i", str(audio_path),
-            "-i", str(music_path),
             "-filter_complex",
-            "[0:a]volume=1.0[voice];[1:a]volume=0.10,aloop=loop=-1:size=2e+09[music];[voice][music]amix=inputs=2:duration=first[aout]",
+            "[0:a]volume=0.10[music];[1:a]volume=1.0[voice];[voice][music]amix=inputs=2:duration=second[aout]",
             "-map", "[aout]",
             "-c:a", "aac", "-b:a", "192k",
+            "-shortest",
             str(audio_mix)
         ], check=True, capture_output=True)
         final_audio = audio_mix
