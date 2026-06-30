@@ -166,7 +166,24 @@ OUTPUT ONLY RAW JSON:
     if start != -1 and end > start:
         content = content[start:end]
 
-    data = json.loads(content)
+    try:
+        data = json.loads(content)
+    except json.JSONDecodeError:
+        # Fix common issue: unescaped quotes inside string values
+        import re as re2
+        # Remove control characters
+        content = re2.sub(r'[\x00-\x1f\x7f]', '', content)
+        # Try to fix unescaped quotes within values (basic heuristic)
+        content = content.replace('\\"', '"').replace('"', '\\"')
+        content = content.replace('\\"{', '{').replace('}\\"', '}')
+        content = content.replace('\\"[', '[').replace(']\\"', ']')
+        content = content.replace(': \\"', ': "').replace('\\",', '",').replace('\\"}', '"}')
+        content = content.replace('\\"\\n', '"\n')
+        try:
+            data = json.loads(content)
+        except Exception as e2:
+            print(f"  ⚠️ JSON still broken, retrying generation...")
+            raise Exception(f"JSON parse failed even after cleanup: {e2}")
     print(f"  ✅ Title: {data['title']}")
     print(f"  ✅ Characters: {data.get('characters', [])}")
     print(f"  ✅ Dialogue lines: {len(data.get('dialogue', []))}\n")
